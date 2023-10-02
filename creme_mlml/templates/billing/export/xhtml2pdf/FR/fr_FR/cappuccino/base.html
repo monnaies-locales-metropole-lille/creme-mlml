@@ -1,0 +1,194 @@
+{% load creme_core_tags creme_image persons_tags %}
+{% with currency=object.currency source=object.source dark_coffee='#7b3b15' light_coffee='#957460' %}
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>{{object.entity_type|upper}}</title>
+    <meta name="description" content="{% block description %}Document généré par Creme+Xhtml2pdf{% endblock %}">
+    <meta name="author" content="Hybird">
+    <style>
+        {% block css %}{% include 'billing/export/xhtml2pdf/FR/fr_FR/cappuccino/cappuccino.css' %}{% endblock %}
+    </style>
+</head>
+
+<body>
+    {% block header %}
+    <table class="header">
+        <tbody>
+            <tr>
+                <td class="logo" rowspan="2">
+                    {% if source.image %}
+                    {% with img_path=source.image.filedata.path %}
+                        {% image_size path=img_path as img_size %}{% image_scale_to_frame size=img_size width=360 height=120 as final_size %}
+                        <img src="{{img_path}}" width="{{final_size.0}}pt" height="{{final_size.1}}pt">
+                    {% endwith %}
+                    {% endif %}
+                </td>
+                <th class="doc-title">
+                    {% block title %}{{object.entity_type}}{% endblock %}{% if object.number %} N° {{object.number}}{% endif %}
+                </th>
+            </tr>
+            <tr>
+                <td class="doc-info">
+                    <ul>
+                        {% block doc_info %}
+                        <li><span class="doc-info-key">DATE</span>: {{object.issuing_date|date:'d-m-Y'}}</li>
+                        {% endblock %}
+                    </ul>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    {% endblock %}
+
+    {% block addresses %}
+    <table class="addresses">
+        <tbody>
+            <tr>
+                {% block address_from %}
+                <td class="address-from">
+                    <span class="address-name">{{object.source}}</span><br>
+                    {% with source_address=source.billing_address %}{% if source_address %}{{source_address|persons_pretty_address|linebreaksbr}}{% if source_address.country %}<br>{{source_address.country}}{% endif %}{% endif %}{% endwith %}
+                </td>
+                {% endblock %}
+                <td></td>
+                {% block address_to %}
+                <td class="address-to">
+                    <span class="address-name">{{object.target}}</span><br>
+                    {% with billing_address=object.billing_address %}{% if billing_address %}{{billing_address|persons_pretty_address|linebreaksbr}}{% if billing_address.country %}<br>{{billing_address.country}}{% endif %}{% endif %}{% endwith %}
+                </td>
+                {% endblock %}
+            </tr>
+        </tbody>
+    </table>
+    {% endblock %}
+
+    {% block lines %}
+    <table class="lines" repeat="1">
+        <thead>
+        {% block lines_head %}
+            <tr>
+                <th class="line-description">Désignation</th>
+                <th class="line-quantity">Quantité</th>
+                <th class="line-unit_price">Prix Unitaire HT</th>
+                <th class="line-price">Montant HT</th>
+            </tr>
+        {% endblock %}
+        </thead>
+        <tbody>
+        {% block lines_body %}
+            {% for line in object.iter_all_lines %}
+            <tr>
+                <td class="line-description">
+                    <span>{{line.related_item|default:line.on_the_fly_item}}</span><br>
+                    <span class="line-description-comment">{{line.comment}}</span>
+                </td>
+                <td class="line-quantity">{{line.quantity}}</td>
+                <td class="line-unit_price">{{line.unit_price|format_amount:currency}}</td>
+                <td class="line-price">{{line.get_raw_price|format_amount:currency}}</td>
+            </tr>
+            {% endfor %}
+{% comment %} TO TEST PAGE JUMP
+            {% for i in 25|range:1 %}
+            <tr>
+                <td class="line-description">Line {{i}}</td>
+                <td class="line-unit_price">{{12.00|format_amount:currency}}</td>
+                <td class="line-quantity">{{i}}</td>
+                <td class="line-price">{{i|mult:12|format_amount:currency}}</td>
+            </tr>
+            {% endfor %}
+{% endcomment %}
+        {% endblock %}
+        </tbody>
+    </table>
+    {% endblock %}
+
+    {% block total %}
+    <table repeat="1">
+          <tr style="font-size:15pt;border-top-style:solid;border-top-width:0.5pt;border-top-color:{{dark_coffee}};padding-top:4pt;">
+                <td></td>
+                <td></td>
+                <th style="text-align:right;">Total HT :</th>
+                <td style="text-align:center;">{{object.total_no_vat|format_amount:currency}}</td>
+            </tr>
+            <tr style="font-size:15pt;color:{{dark_coffee}};">
+                <td></td>
+                <td></td>
+                <th style="text-align:right;">Net à payer :</th>
+                <td style="text-align:center;">{{object.total_vat|format_amount:currency}}</td>
+            </tr>
+            <tr style="font-size:8pt; padding-bottom:30pt;">
+              <td></td>
+              <td></td>
+              <td colspan="2" style="text-align:center;">TVA non-applicable selon l’article 293 B du CGI</td>
+            </tr>
+    </table>
+    {% endblock %}
+
+    <div class="payment">
+    {% block payment %}
+      {% with pinfo=object.payment_info %}
+      {% if pinfo %}
+      <h2>Paiement</h2>
+      <span>Mandat à effectuer à l’ordre de l’association Monnaies Locales sur la Métropole Lilloise</span>
+      <table>
+          <thead>
+            <tr>
+                <th class="bank-bank_code">IBAN</th>
+                <th class="bank-bank_code">BIC</th>
+                <!--
+                <th class="bank-bank_code">BANQUE</th>
+                <th class="bank-counter_code">GUICHET</th>
+                <th class="bank-account_number">N° DE COMPTE</th>
+                <th class="bank-key">CLÉ RIB</th>
+                -->
+                <th class="bank-domiciliation">DOMICILIATION</th>
+              </tr>
+          </thead>
+          <tbody>
+              <tr>
+                <td class="bank-bank_code">{{pinfo.iban|default:'—'}}</td>
+                <td class="bank-bank_code">{{pinfo.bic|default:'—'}}</td>
+                <!--
+                <td class="bank-bank_code">{{pinfo.bank_code|default:'—'}}</td>
+                <td class="bank-counter_code">{{pinfo.counter_code|default:'—'}}</td>
+                <td class="bank-account_number">{{pinfo.account_number|default:'—'}}</td>
+                <td class="bank-key">{{pinfo.rib_key|default:'—'}}</td>
+                -->
+                <td class="bank-domiciliation">{{pinfo.banking_domiciliation|default:'—'}}</td>
+              </tr>
+          </tbody>
+      </table>
+      {% endif %}
+      {% endwith %}
+    {% endblock %}
+    </div>
+
+    <div style="font-size=8pt;">
+      <h2>Conditions</h2>
+      <ul>
+        <li>Règlement dans les 30 jours à compter de la réception de la facture</li>
+        <li>Pas d’escompte en cas de paiement anticipé</li>
+        <li>Taux des pénalités de retard : 2,7% du montant TTC</li>
+        <li>En cas de retard de paiement, indemnité forfaitaire légale pour frais de recouvrement : 40€</li>
+        <li>Dispensé d'immatriculation au RCS et au répertoire des métiers</li>
+      </ul>
+    </div>
+
+{#  Content for Static Frame 'footer_frame' #}
+    <div id="footer_content" class="footer">
+        {% block footer %}
+        <span class="orga-info-key">SIRET</span>: <span class="orga-info-value">{{source.siret|default:'—'}}</span>
+        |
+        <span class="orga-info-key">NAF</span>: <span class="orga-info-value">{{source.naf|default:'—'}}</span>
+        <br>
+        <span>{% listify source.email source.phone source.url_site as details %}{{details|filter_empty|join:' | '}}</span>
+        <br>
+        Page <pdf:pagenumber>
+        sur <pdf:pagecount>
+        {% endblock %}
+    </div>
+  </body>
+</html>
+{% endwith %}

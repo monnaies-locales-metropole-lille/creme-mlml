@@ -1,0 +1,10 @@
+creme-crm~=2.4.7
+
+[dev]
+creme-crm[dev]~=2.4.7
+
+[mysql]
+creme-crm[mysql]~=2.4.7
+
+[pgsql]
+creme-crm[pgsql]~=2.4.7
